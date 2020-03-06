@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+
+
+def run(command):
+	# Run a command on the shell and supress the exit code.
+
+	exit_code = os.system(f'{command}')
+
+	if exit_code != 0 and exit_code != 256:
+		jh_print(f"'{command}' exited with a {exit_code} code.", 'error')
+		quit()
+
+	return exit_code  # Return the exit code if ever needed outside of run() 
+
+
+def run_and_read(command):
+	# Run a command and return a list of results with the newlines removed.
+
+	command_output = os.popen(f'{command}').readlines()
+	sanitized_output = []
+
+	for each_output in command_output:
+		sanitized_output.append(each_output.replace('\n', ''))
+
+	if len(sanitized_output) == 1:
+		# [!] Return as a string if only one line.
+
+		return sanitized_output[0]
+
+	return sanitized_output
+
+
+def jh_print(text, mode):
+	# Takes a string and mode and prints the text with a 'jh: '
+	# prepended and in color depending on the mode.
+	COLORS = {
+		'error': '\033[31m',
+		'info': '\033[34m',
+		'congrats': '\033[32m',
+		'jh_color': '\033[36m',
+		'reset_all': '\033[39m\033[49m'
+	}
+
+	#Change this to false if you'd rather not have colors.
+	USE_COLORS = True
+
+	if USE_COLORS:
+		print(COLORS['jh_color'] + 'jh:' + COLORS['reset_all'] \
+			  + ' ' + COLORS[mode] + f'[{mode}]' \
+			  + COLORS['reset_all'] + f' {text}')
+	else:
+		print(f'jh: [{mode}] {text}')
+
+
+# Start point of execution.
+arguments = sys.argv
+
+if len(arguments) == 1:
+	# No arguments were passed so create flag.txt & solution.txt
+
+	run('touch flag.txt solution.txt')
+	jh_print('flag.txt and solution.txt have been created.', 'info')
+
+elif arguments[1] == 'done':
+	# Move up a directory and add '_COMPLETE' to the old pwd.
+
+	pwd = run_and_read('pwd')
+	run('cd ..')
+	run(f"mv {pwd} {pwd}_COMPLETE")
+	pretty_pwd = pwd.split('/')[-1]
+	jh_print(f'{pretty_pwd} has been marked complete.', 'congrats')
+
+else:
+	# Create a directory for a challenge named after the argument.
+
+	ls_results = run_and_read('ls')
+
+
+	ctf_challenge_dirs = []
+	# Loop throgh everything returned by ls and determine if its a directory
+	# made by jh. A directory made by jh starts with 2 digits and an '_'.
+	for ls_result in ls_results:
+		if ls_result.split('_')[0].isdigit() and ls_result.index('_') >= 0:
+			ctf_challenge_dirs.append(ls_result)
+
+	next_challenge_number = "{:02d}".format(len(ctf_challenge_dirs)+1)
+	next_dir = next_challenge_number + '_' + arguments[1]
+	run(f'mkdir {next_dir}')
+
+	jh_print(f"{next_dir} has been created.", 'info')
+
